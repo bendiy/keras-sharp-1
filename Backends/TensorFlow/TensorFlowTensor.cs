@@ -35,7 +35,7 @@ namespace KerasSharp.Engine.Topology
     using System.Text;
     using System.Threading.Tasks;
     using static KerasSharp.Python;
-    using TensorFlow;
+    using Tensorflow;
     using System.Diagnostics;
 
     [DataContract]
@@ -47,10 +47,10 @@ namespace KerasSharp.Engine.Topology
             get { return base.K as TensorFlowBackend; }
         }
 
-        public TFTensor tensor;
-        public TFOutput output;
+        public Tensorflow.Tensor tensor;
+        public TF_Output output;
 
-        public new TFDataType dtype
+        public new TF_DataType dtype
         {
             get
             {
@@ -88,7 +88,7 @@ namespace KerasSharp.Engine.Topology
             return r;
         }
 
-        public static implicit operator TFOutput(TensorFlowTensor t)
+        public static implicit operator TF_Output(TensorFlowTensor t)
         {
             return t.output;
         }

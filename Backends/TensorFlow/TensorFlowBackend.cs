@@ -34,31 +34,31 @@ namespace KerasSharp.Backends
     using KerasSharp.Engine.Topology;
     using KerasSharp.Losses;
     using KerasSharp.Models;
-    using TensorFlow;
+    using Tensorflow;
     using static KerasSharp.Python;
     using Accord.Math;
 
     public class TensorFlowBackend : BackendBase, IBackend
     {
-        internal TFGraph tf;
+        internal Graph tf;
 
 
         // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L25
 
         // This is the default internal TF session used by Keras.
         // It can be set manually via `set_session(sess)`.
-        internal TFSession _SESSION;
+        internal Session _SESSION;
 
         // This dictionary holds a mapping {graph: learning_phase}.
         // A learning phase is a bool tensor used to run Keras models in
         // either train mode (learning_phase == 1) or test mode (learning_phase == 0).
-        private Dictionary<TFGraph, object> _GRAPH_LEARNING_PHASES = new Dictionary<TFGraph, object>();
+        private Dictionary<Graph, object> _GRAPH_LEARNING_PHASES = new Dictionary<Graph, object>();
 
         // This dictionary holds a mapping {graph: UID_DICT}.
         // each UID_DICT is a dictionary mapping name prefixes to a current index,
         // used for generatic graph-specific string UIDs
         // for various names (e.g. layer names).
-        private Dictionary<TFGraph, Dictionary<string, int>> _GRAPH_UID_DICTS = new Dictionary<TFGraph, Dictionary<string, int>>();
+        private Dictionary<Graph, Dictionary<string, int>> _GRAPH_UID_DICTS = new Dictionary<Graph, Dictionary<string, int>>();
 
         // This boolean flag can be set to True to leave variable initialization
         // up to the user.
@@ -68,8 +68,8 @@ namespace KerasSharp.Backends
 
         public TensorFlowBackend()
         {
-            this.tf = new TFGraph();
-            this._SESSION = new TFSession(tf);
+            this.tf = new Graph();
+            this._SESSION = new Session(tf);
         }
 
         /// <summary>
@@ -98,7 +98,7 @@ namespace KerasSharp.Backends
         /// 
         public void reset_uids()
         {
-            _GRAPH_UID_DICTS = new Dictionary<TFGraph, Dictionary<string, int>>();
+            _GRAPH_UID_DICTS = new Dictionary<Graph, Dictionary<string, int>>();
         }
 
         /// <summary>
@@ -110,12 +110,12 @@ namespace KerasSharp.Backends
         {
             // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L71
             // tf.reset_default_graph();
-            tf = new TFGraph();
-            _SESSION = new TFSession(tf);
+            tf = new Graph();
+            _SESSION = new Session(tf);
             //
             reset_uids();
-            TFOutput phase = tf.Placeholder(dtype: TFDataType.Bool, operName: "keras_learning_phase");
-            _GRAPH_LEARNING_PHASES = new Dictionary<TFGraph, object>();
+            TF_Output phase = Tensorflow.tf.placeholder(dtype: TF_DataType.TF_BOOL, operName: "keras_learning_phase");
+            _GRAPH_LEARNING_PHASES = new Dictionary<Graph, object>();
             _GRAPH_LEARNING_PHASES[tf] = phase;
         }
 
@@ -132,15 +132,15 @@ namespace KerasSharp.Backends
         /// 
         /// <returns>Tensor.</returns>
         /// 
-        public Tensor reshape(Tensor x, int[] shape)
+        public KerasSharp.Engine.Topology.Tensor reshape(KerasSharp.Engine.Topology.Tensor x, int[] shape)
         {
             // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L1724
-            return Out(tf.Reshape(tensor: In(x), shape: _constant(shape)));
+            return Out(gen_array_ops.reshape(In(x).tensor, In(shape).tensor));
         }
 
 
 
-        public Tensor abs(Tensor input)
+        public KerasSharp.Engine.Topology.Tensor abs(KerasSharp.Engine.Topology.Tensor input)
         {
             return Out(tf.Abs(In(input)));
         }
@@ -150,22 +150,22 @@ namespace KerasSharp.Backends
 
 
 
-        public List<Array> batch_get_value(List<Tensor> weights)
+        public List<Array> batch_get_value(List<KerasSharp.Engine.Topology.Tensor> weights)
         {
             throw new NotImplementedException();
         }
 
-        public List<Array> batch_get_value(List<List<Tensor>> weights)
+        public List<Array> batch_get_value(List<List<KerasSharp.Engine.Topology.Tensor>> weights)
         {
             throw new NotImplementedException();
         }
 
-        public void batch_set_value(List<Tuple<Tensor, Array>> weight_value_tuples)
+        public void batch_set_value(List<Tuple<KerasSharp.Engine.Topology.Tensor, Array>> weight_value_tuples)
         {
             throw new NotImplementedException();
         }
 
-        public void batch_set_value(List<(Tensor, Array)> tuples)
+        public void batch_set_value(List<(KerasSharp.Engine.Topology.Tensor, Array)> tuples)
         {
             throw new NotImplementedException();
         }
@@ -180,11 +180,11 @@ namespace KerasSharp.Backends
         /// 
         /// <returns>Output tensor.</returns>
         /// 
-        public Tensor binary_crossentropy(Tensor output, Tensor target, bool from_logits = false)
+        public KerasSharp.Engine.Topology.Tensor binary_crossentropy(KerasSharp.Engine.Topology.Tensor output, KerasSharp.Engine.Topology.Tensor target, bool from_logits = false)
         {
-            TFOutput _output = In(output);
-            TFOutput _target = In(target);
-            TFDataType dtype = _output.OutputType;
+            TF_Output _output = In(output);
+            TF_Output _target = In(target);
+            TF_DataType dtype = _output.OutputType;
 
             // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L2792
 
@@ -193,17 +193,17 @@ namespace KerasSharp.Backends
             if (!from_logits)
             {
                 // transform back to logits
-                TFOutput _epsilon = _constant(epsilon(), dtype: dtype);
-                _output = tf.ClipByValue(_output, _epsilon, tf.Sub(_constant(1, dtype: dtype), _epsilon));
-                _output = tf.Log(tf.Div(_output, tf.Sub(_constant(1, dtype: dtype), _output)));
+                TF_Output _epsilon = _constant(epsilon(), dtype: dtype);
+                _output = tf.ClipByValue(_output, _epsilon, gen_math_ops.sub(_constant(1, dtype: dtype), _epsilon));
+                _output = tf.Log(gen_math_ops.real_div(_output, gen_math_ops.sub(_constant(1, dtype: dtype), _output)));
             }
 
             return Out(tf.SigmoidCrossEntropyWithLogits(labels: _target, logits: _output));
         }
 
-        public Tensor cast(Tensor x, DataType dataType)
+        public KerasSharp.Engine.Topology.Tensor cast(KerasSharp.Engine.Topology.Tensor x, DataType dataType)
         {
-            return Out(tf.Cast(In(x), In(dataType)));
+            return Out(Tensorflow.tf.cast(In(x).tensor, In(dataType)));
         }
 
         /// <summary>
@@ -216,7 +216,7 @@ namespace KerasSharp.Backends
         /// 
         /// <returns>Output tensor.</returns>
         /// 
-        public Tensor categorical_crossentropy(Tensor target, Tensor output, bool from_logits = false)
+        public KerasSharp.Engine.Topology.Tensor categorical_crossentropy(KerasSharp.Engine.Topology.Tensor target, KerasSharp.Engine.Topology.Tensor output, bool from_logits = false)
         {
             var _target = In(target);
             var _output = In(output);
@@ -227,34 +227,34 @@ namespace KerasSharp.Backends
             {
                 // scale preds so that the class probas of each sample sum to 1
                 int?[] shape = output.shape;
-                var last = tf.Const(new TFTensor(shape.Length - 1));
-                TFOutput o = tf.Div(_output, tf.ReduceSum(_output, axis: last, keep_dims: true));
+                var last = Tensorflow.tf.constant(new Tensorflow.Tensor(shape.Length - 1));
+                TF_Output o = Tensorflow.tf.divide(_output, Tensorflow.tf.reduce_sum(_output, axis: last));
                 // manual computation of crossentropy
-                TFOutput _epsilon = _constant(epsilon(), dtype: _output.dtype);
-                o = tf.ClipByValue(o, _epsilon, tf.Sub(_constant(1f), _epsilon));
-                o = tf.Neg(tf.ReduceSum(tf.Mul(_target, tf.Log(_output)), axis: last));
+                TF_Output _epsilon = _constant(epsilon(), dtype: _output.dtype);
+                o = tf.ClipByValue(o, _epsilon, Tensorflow.tf.sub(Tensorflow.tf.constant(1f), Tensorflow.tf.constant(_epsilon)));
+                o = tf.Neg(Tensorflow.tf.reduce_sum(Tensorflow.tf.multiply(_target, tf.Log(_output)), axis: last));
                 return Out(o);
             }
 
             return Out(tf.SoftmaxCrossEntropyWithLogits(_target, _output).loss);
         }
 
-        public Tensor clip(Tensor norms, int v, int maxValue)
+        public KerasSharp.Engine.Topology.Tensor clip(KerasSharp.Engine.Topology.Tensor norms, int v, int maxValue)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor clip(Tensor norms, double min_value, double max_value)
+        public KerasSharp.Engine.Topology.Tensor clip(KerasSharp.Engine.Topology.Tensor norms, double min_value, double max_value)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor clip_norm(Tensor g, double clipnorm, Tensor norm)
+        public KerasSharp.Engine.Topology.Tensor clip_norm(KerasSharp.Engine.Topology.Tensor g, double clipnorm, KerasSharp.Engine.Topology.Tensor norm)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor constant<T>(T value, int[] shape = null, DataType? dtype = null, string name = null)
+        public KerasSharp.Engine.Topology.Tensor constant<T>(T value, int[] shape = null, DataType? dtype = null, string name = null)
         {
             if (dtype == null)
                 dtype = floatx();
@@ -273,7 +273,7 @@ namespace KerasSharp.Backends
                 _shape = shape;
             }
 
-            TFOutput o;
+            TF_Output o;
             if (shape != null && shape.Length != 0 && !(value is Array))
             {
                 o = _constant(Matrix.Create(value.GetType(), _shape, value), In(dtype.Value), name);
@@ -289,47 +289,47 @@ namespace KerasSharp.Backends
             return Out(o);
         }
 
-        private TFOutput _constant<T>(T value, TFDataType? dtype = null, string operName = null)
+        private TF_Output _constant<T>(T value, TF_DataType? dtype = null, string operName = null)
         {
-            TFTensor t = new TFTensor((dynamic)value);
+            Tensorflow.Tensor t = new Tensorflow.Tensor((dynamic)value);
 
-            TFOutput o = tf.Const(t, operName: operName);
+            TF_Output o = Tensorflow.tf.constant(t, name: operName)._as_tf_output();
 
             if (dtype == null || o.OutputType == dtype.Value)
                 return o;
 
-            return tf.Cast(o, dtype.Value);
+            return Tensorflow.tf.cast(t, dtype.Value)._as_tf_output();
         }
 
 
 
 
-        public Tensor dropout(object p, double retain_prob, object noise_shape, object seed)
+        public KerasSharp.Engine.Topology.Tensor dropout(object p, double retain_prob, object noise_shape, object seed)
         {
             throw new NotImplementedException();
         }
 
-        public DataType? dtype(Tensor tensor)
+        public DataType? dtype(KerasSharp.Engine.Topology.Tensor tensor)
         {
             return Out(In(tensor).dtype);
         }
 
-        public Tensor elu(Tensor x)
+        public KerasSharp.Engine.Topology.Tensor elu(KerasSharp.Engine.Topology.Tensor x)
         {
             return Out(tf.Elu(In(x)));
         }
 
-        public Tensor elu(Tensor x, double alpha)
+        public KerasSharp.Engine.Topology.Tensor elu(KerasSharp.Engine.Topology.Tensor x, double alpha)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor exp(Tensor x)
+        public KerasSharp.Engine.Topology.Tensor exp(KerasSharp.Engine.Topology.Tensor x)
         {
             return Out(tf.Exp(In(x)));
         }
 
-        public Function function(List<Tensor> inputs, List<Tensor> outputs, List<List<Tensor>> updates, string name)
+        public KerasSharp.Models.Function function(List<KerasSharp.Engine.Topology.Tensor> inputs, List<KerasSharp.Engine.Topology.Tensor> outputs, List<List<KerasSharp.Engine.Topology.Tensor>> updates, string name)
         {
             return new TFFunction(this, inputs: inputs, outputs: outputs, updates: updates, name: name);
         }
@@ -340,54 +340,57 @@ namespace KerasSharp.Backends
         ///   Returns the shape of a variable.
         /// </summary>
         /// 
-        public int?[] get_variable_shape(Tensor x)
+        public int?[] get_variable_shape(KerasSharp.Engine.Topology.Tensor x)
         {
             // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L2192
             return int_shape(x);
         }
 
-        public List<Tensor> gradients(Tensor loss, List<Tensor> param)
+        public List<KerasSharp.Engine.Topology.Tensor> gradients(KerasSharp.Engine.Topology.Tensor loss, List<KerasSharp.Engine.Topology.Tensor> param)
         {
-            var y = new TFOutput[] { In(loss).output };
+            var y = new TF_Output[] { In(loss).output };
             var x = param.Select(t => In(t).output).ToArray();
 
-            TFOutput[] grads = tf.AddGradients(y, x);
+            TF_Output[] grads = tf.AddGradients(y, x);
 
-            List<Tensor> r = new List<Tensor>();
+            List<KerasSharp.Engine.Topology.Tensor> r = new List<KerasSharp.Engine.Topology.Tensor>();
             for (int i = 0; i < grads.Length; i++)
                 r.Add(Out(grads[i], name: "grad/" + x[i].Operation.Name));
+
+            // TODO: TensorFlow.NET: convert to Tensor[]???
+            //return Tensorflow.tf.gradients(In(loss).tensor, param, colocate_gradients_with_ops: true);
 
             return r;
         }
 
-        public Tensor greater_equal(Tensor w, double v)
+        public KerasSharp.Engine.Topology.Tensor greater_equal(KerasSharp.Engine.Topology.Tensor w, double v)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor not_equal(Tensor x, Tensor y)
+        public KerasSharp.Engine.Topology.Tensor not_equal(KerasSharp.Engine.Topology.Tensor x, KerasSharp.Engine.Topology.Tensor y)
         {
             return Out(tf.NotEqual(In(x), In(y)));
         }
 
-        public Tensor not_equal<T>(Tensor x, T y) where T : struct
+        public KerasSharp.Engine.Topology.Tensor not_equal<T>(KerasSharp.Engine.Topology.Tensor x, T y) where T : struct
         {
             using (this.name_scope("not_equal"))
             {
                 TensorFlowTensor _x = In(x);
-                var _y = tf.Cast(tf.Const((dynamic)y), _x.dtype);
+                var _y = Tensorflow.tf.cast(Tensorflow.tf.constant((dynamic)y), _x.dtype);
                 return Out(tf.NotEqual(_x, _y));
             }
         }
 
-        public Tensor hard_sigmoid(Tensor x)
+        public KerasSharp.Engine.Topology.Tensor hard_sigmoid(KerasSharp.Engine.Topology.Tensor x)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor identity(Tensor x, string name = null)
+        public KerasSharp.Engine.Topology.Tensor identity(KerasSharp.Engine.Topology.Tensor x, string name = null)
         {
-            return Out(tf.Identity(In(x), operName: name));
+            return Out(gen_array_ops.identity(In(x).tensor, name: name));
         }
 
         /// <summary>
@@ -398,7 +401,7 @@ namespace KerasSharp.Backends
         /// 
         /// <returns>A tuple of integers(or None entries).</returns>
         /// 
-        public int?[] int_shape(Tensor x)
+        public int?[] int_shape(KerasSharp.Engine.Topology.Tensor x)
         {
             // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L468
 
@@ -408,7 +411,7 @@ namespace KerasSharp.Backends
             return _int_shape(In(x).output);
         }
 
-        private int?[] _int_shape(TFOutput _x)
+        private int?[] _int_shape(TF_Output _x)
         {
             try
             {
@@ -421,7 +424,7 @@ namespace KerasSharp.Backends
             }
         }
 
-        public int?[] int_shape(TFTensor input_tensor)
+        public int?[] int_shape(Tensorflow.Tensor input_tensor)
         {
             throw new NotImplementedException();
         }
@@ -436,7 +439,7 @@ namespace KerasSharp.Backends
         /// 
         /// <returns>Either 'x' or 'alt' based on the 'training' flag. The 'training' flag defaults to 'K.learning_phase()'.</returns>
         /// 
-        public Tensor in_train_phase(Func<Tensor> x, Func<Tensor> alt, bool? training)
+        public KerasSharp.Engine.Topology.Tensor in_train_phase(Func<KerasSharp.Engine.Topology.Tensor> x, Func<KerasSharp.Engine.Topology.Tensor> alt, bool? training)
         {
             // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L2583
 
@@ -466,7 +469,7 @@ namespace KerasSharp.Backends
             {
                 //else: assume learning phase is a placeholder tensor.
 
-                Tensor xx = @switch((Tensor)learning_phase(), x, alt);
+                KerasSharp.Engine.Topology.Tensor xx = @switch((KerasSharp.Engine.Topology.Tensor)learning_phase(), x, alt);
 
                 if (uses_learning_phase)
                     xx._uses_learning_phase = true;
@@ -477,7 +480,7 @@ namespace KerasSharp.Backends
         /// <summary>
         ///   Selects `x` in test phase, and `alt` otherwise. Note that `alt` should have the* same shape* as `x`.
         /// </summary>
-        public Tensor in_test_phase(Func<Tensor> x, Func<Tensor> alt, bool? training = null)
+        public KerasSharp.Engine.Topology.Tensor in_test_phase(Func<KerasSharp.Engine.Topology.Tensor> x, Func<KerasSharp.Engine.Topology.Tensor> alt, bool? training = null)
         {
             return in_train_phase(alt, x, training: training);
         }
@@ -493,25 +496,25 @@ namespace KerasSharp.Backends
         /// 
         /// <returns>The selected tensor.</returns>
         /// 
-        public Tensor @switch(Tensor condition, Func<Tensor> then_expression, Func<Tensor> else_expression)
+        public KerasSharp.Engine.Topology.Tensor @switch(KerasSharp.Engine.Topology.Tensor condition, Func<KerasSharp.Engine.Topology.Tensor> then_expression, Func<KerasSharp.Engine.Topology.Tensor> else_expression)
         {
             var _condition = In(condition);
 
-            if (_condition.dtype != TFDataType.Bool)
-                condition = Out(tf.Cast(_condition, TFDataType.Bool));
+            if (_condition.dtype != TF_DataType.TF_BOOL)
+                condition = Out(Tensorflow.tf.cast(_condition.tensor, TF_DataType.TF_BOOL));
 
-            TFOutput x = tf.Cond(In(condition),
+            TF_Output x = tf.Cond(In(condition),
                         () => In(then_expression()),
                         () => In(else_expression()));
             return Out(x);
         }
 
-        public bool is_sparse(Tensor tensor)
+        public bool is_sparse(KerasSharp.Engine.Topology.Tensor tensor)
         {
             return false;
         }
 
-        public Tensor l2_normalize(Tensor expected, int axis)
+        public KerasSharp.Engine.Topology.Tensor l2_normalize(KerasSharp.Engine.Topology.Tensor expected, int axis)
         {
             throw new NotImplementedException();
         }
@@ -530,10 +533,10 @@ namespace KerasSharp.Backends
         /// 
         public object learning_phase()
         {
-            TFGraph graph = tf;
+            Graph graph = tf;
             if (!_GRAPH_LEARNING_PHASES.ContainsKey(graph))
             {
-                TFOutput phase = tf.Placeholder(dtype: TFDataType.Bool, operName: "keras_learning_phase");
+                TF_Output phase = Tensorflow.tf.placeholder(dtype: TF_DataType.TF_BOOL, operName: "keras_learning_phase");
                 _GRAPH_LEARNING_PHASES[graph] = phase;
             }
 
@@ -548,22 +551,22 @@ namespace KerasSharp.Backends
             _GRAPH_LEARNING_PHASES[tf] = value;
         }
 
-        public Tensor max(Tensor x, int v, object p)
+        public KerasSharp.Engine.Topology.Tensor max(KerasSharp.Engine.Topology.Tensor x, int v, object p)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor max(Tensor x, int axis, bool keepdims)
+        public KerasSharp.Engine.Topology.Tensor max(KerasSharp.Engine.Topology.Tensor x, int axis, bool keepdims)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor max(Tensor tensor, int axis)
+        public KerasSharp.Engine.Topology.Tensor max(KerasSharp.Engine.Topology.Tensor tensor, int axis)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor maximum(double v, Tensor tensor)
+        public KerasSharp.Engine.Topology.Tensor maximum(double v, KerasSharp.Engine.Topology.Tensor tensor)
         {
             throw new NotImplementedException();
         }
@@ -572,16 +575,19 @@ namespace KerasSharp.Backends
         ///   Turn a nD tensor into a 2D tensor with same 0th dimension. In other words, it flattens each data samples of a batch.
         /// </summary>
         /// 
-        public Tensor batch_flatten(Tensor x)
+        public KerasSharp.Engine.Topology.Tensor batch_flatten(KerasSharp.Engine.Topology.Tensor x)
         {
             var _x = In(x);
-            TFOutput shape = tf.Shape(_x);
-            TFOutput dim = tf.Prod(tf.Slice(shape, tf.Const(1), tf.Rank(shape)), reduction_indices: tf.ReduceDims(shape, null));
-            return Out(tf.Reshape(In(x), tf.Stack(new TFOutput[] { tf.Const(-1), dim } )));
+            TF_Output shape = tf.Shape(_x);
+            
+            TF_Output dim = tf.Prod(tf.Slice(shape, Tensorflow.tf.constant(1), array_ops.rank(_x.tensor)), reduction_indices: tf.ReduceDims(shape, null));
+            // TODO: TensorFlow.NET
+            //gen_array_ops.reshape(In(x).tensor, TODO);
+            return Out(tf.Reshape(In(x), tf.Stack(new TF_Output[] { Tensorflow.tf.constant(-1)._as_tf_output(), dim } )));
         }
 
 
-        public TFOutput _normalize_axis(int[] axis, int? ndim)
+        public int[] _normalize_axis(int[] axis, int? ndim)
         {
             axis = (int[])axis.Clone();
             for (int i = 0; i < axis.Length; i++)
@@ -590,7 +596,7 @@ namespace KerasSharp.Backends
                     axis[i] = axis[i] % ndim.Value;
             }
 
-            return tf.Const(axis);
+            return axis;
         }
 
         /// <summary>
@@ -605,9 +611,9 @@ namespace KerasSharp.Backends
         ///   
         /// <returns>A tensor with the mean of elements of <c>x</c>.</returns>
         /// 
-        public Tensor mean(Tensor x, int[] axis, bool keepdims = false, string name = null)
+        public KerasSharp.Engine.Topology.Tensor mean(KerasSharp.Engine.Topology.Tensor x, int[] axis, bool keepdims = false, string name = null)
         {
-            return Out(tf.ReduceMean(In(x), _normalize_axis(axis, ndim(x)), keepdims, operName: name));
+            return Out(math_ops.reduce_mean(In(x).tensor, _normalize_axis(axis, ndim(x)), keepdims, name: name));
         }
 
         /// <summary>
@@ -622,39 +628,39 @@ namespace KerasSharp.Backends
         ///   
         /// <returns>A tensor with the mean of elements of <c>x</c>.</returns>
         /// 
-        public Tensor mean(Tensor x, int axis = -1, bool keepdims = false, string name = null)
+        public KerasSharp.Engine.Topology.Tensor mean(KerasSharp.Engine.Topology.Tensor x, int axis = -1, bool keepdims = false, string name = null)
         {
-            return Out(tf.ReduceMean(In(x), axis: tf.Const(axis), keep_dims: keepdims, operName: name));
+            return Out(math_ops.reduce_mean(In(x).tensor, axis: Tensorflow.tf.constant(axis), keepdims: keepdims, name: name));
         }
 
 
-        public Tensor minus(Tensor tensor)
+        public KerasSharp.Engine.Topology.Tensor minus(KerasSharp.Engine.Topology.Tensor tensor)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor dot(Tensor a, Tensor b, string name = null)
+        public KerasSharp.Engine.Topology.Tensor dot(KerasSharp.Engine.Topology.Tensor a, KerasSharp.Engine.Topology.Tensor b, string name = null)
         {
-            return Out(tf.MatMul(In(a).output, In(b).output, operName: name));
+            return Out(math_ops.matmul(In(a).tensor, In(b).tensor, name: name));
         }
 
 
-        public Tensor mul<T>(T a, Tensor b, string name = null)
+        public KerasSharp.Engine.Topology.Tensor mul<T>(T a, KerasSharp.Engine.Topology.Tensor b, string name = null)
         {
             return mul(constant(a, dtype: dtype(b)), b, name: name);
         }
 
-        public Tensor mul(Tensor a, Tensor b, string name = null)
+        public KerasSharp.Engine.Topology.Tensor mul(KerasSharp.Engine.Topology.Tensor a, KerasSharp.Engine.Topology.Tensor b, string name = null)
         {
-            return Out(tf.Mul(In(a).output, In(b).output, operName: name));
+            return Out(gen_math_ops.mul(In(a).tensor, In(b).tensor, name: name));
         }
 
-        public Tensor mul<T>(Tensor a, T b, string name = null)
+        public KerasSharp.Engine.Topology.Tensor mul<T>(KerasSharp.Engine.Topology.Tensor a, T b, string name = null)
         {
             return mul(a, constant(b, dtype: dtype(a), name: name));
         }
 
-        public Tensor mul(List<Tensor> batch_outs, int length)
+        public KerasSharp.Engine.Topology.Tensor mul(List<KerasSharp.Engine.Topology.Tensor> batch_outs, int length)
         {
             throw new NotImplementedException();
         }
@@ -663,34 +669,34 @@ namespace KerasSharp.Backends
 
 
 
-        public Tensor div<T>(T a, Tensor b)
+        public KerasSharp.Engine.Topology.Tensor div<T>(T a, KerasSharp.Engine.Topology.Tensor b)
         {
             return div(constant(a, dtype: dtype(b)), b);
         }
 
-        public Tensor div(Tensor a, Tensor b)
+        public KerasSharp.Engine.Topology.Tensor div(KerasSharp.Engine.Topology.Tensor a, KerasSharp.Engine.Topology.Tensor b)
         {
-            return Out(tf.Div(In(a).output, In(b).output));
+            return Out(gen_math_ops.real_div(In(a).tensor, In(b).tensor));
         }
 
-        public Tensor div<T>(Tensor a, T b)
+        public KerasSharp.Engine.Topology.Tensor div<T>(KerasSharp.Engine.Topology.Tensor a, T b)
         {
             return div(a, constant(b, dtype: dtype(a)));
         }
 
-        public Tensor div(List<Tensor> batch_outs, int length)
+        public KerasSharp.Engine.Topology.Tensor div(List<KerasSharp.Engine.Topology.Tensor> batch_outs, int length)
         {
             throw new NotImplementedException();
         }
 
 
 
-        public Tensor add(Tensor a, Tensor b)
+        public KerasSharp.Engine.Topology.Tensor add(KerasSharp.Engine.Topology.Tensor a, KerasSharp.Engine.Topology.Tensor b)
         {
-            return Out(tf.Add(In(a).output, In(b).output));
+            return Out(math_ops.add(In(a).tensor, In(b).tensor));
         }
 
-        public Tensor bias_add(Tensor a, Tensor b, DataFormatType? data_format = null, string name = null)
+        public KerasSharp.Engine.Topology.Tensor bias_add(KerasSharp.Engine.Topology.Tensor a, KerasSharp.Engine.Topology.Tensor b, DataFormatType? data_format = null, string name = null)
         {
             return Out(tf.BiasAdd(In(a), In(b), data_format: In(data_format), operName: name));
         }
@@ -711,29 +717,29 @@ namespace KerasSharp.Backends
             }
         }
 
-        public Tensor add<T>(T a, Tensor b)
+        public KerasSharp.Engine.Topology.Tensor add<T>(T a, KerasSharp.Engine.Topology.Tensor b)
         {
             return add(constant(a), b);
         }
 
-        public Tensor add<T>(Tensor a, T b)
+        public KerasSharp.Engine.Topology.Tensor add<T>(KerasSharp.Engine.Topology.Tensor a, T b)
         {
             return add(a, constant(b));
         }
 
 
 
-        public Tensor subtract(Tensor a, Tensor b, string name = null)
+        public KerasSharp.Engine.Topology.Tensor subtract(KerasSharp.Engine.Topology.Tensor a, KerasSharp.Engine.Topology.Tensor b, string name = null)
         {
-            return Out(tf.Sub(In(a).output, In(b).output, operName: name));
+            return Out(gen_math_ops.sub(In(a).tensor, In(b).tensor, name: name));
         }
 
-        public Tensor subtract<T>(T a, Tensor b, string name = null)
+        public KerasSharp.Engine.Topology.Tensor subtract<T>(T a, KerasSharp.Engine.Topology.Tensor b, string name = null)
         {
             return subtract(constant(a), b, name: name);
         }
 
-        public Tensor subtract<T>(Tensor a, T b, string name = null)
+        public KerasSharp.Engine.Topology.Tensor subtract<T>(KerasSharp.Engine.Topology.Tensor a, T b, string name = null)
         {
             return subtract(a, constant(b), name: name);
         }
@@ -761,7 +767,7 @@ namespace KerasSharp.Backends
         /// <codesrc="TensorFlowBackendTest.cs" region="doc_ndim">
         /// </example>
         /// 
-        public int? ndim(Tensor x)
+        public int? ndim(KerasSharp.Engine.Topology.Tensor x)
         {
             // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L519
 
@@ -773,7 +779,7 @@ namespace KerasSharp.Backends
             return tf.GetTensorNumDims(In(x).output);
         }
 
-        public Tensor placeholder(int?[] shape = null, int? ndim = null, DataType? dtype = null, bool sparse = false, string name = null)
+        public KerasSharp.Engine.Topology.Tensor placeholder(int?[] shape = null, int? ndim = null, DataType? dtype = null, bool sparse = false, string name = null)
         {
             // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L397
 
@@ -791,7 +797,7 @@ namespace KerasSharp.Backends
 
             var tfshape = this.In(shape);
 
-            Tensor x = Out(tf.Placeholder(In(dtype.Value), tfshape, operName: name));
+            KerasSharp.Engine.Topology.Tensor x = Out(Tensorflow.tf.placeholder(In(dtype.Value), tfshape, operName: name));
             x._keras_shape = shape;
             x._uses_learning_phase = false;
             return x;
@@ -808,7 +814,7 @@ namespace KerasSharp.Backends
         /// 
         /// <returns>A tensor.</returns>
         /// 
-        public Tensor random_uniform(int[] shape, double minval = 0.0, double maxval = 1.0, DataType? dtype = null, int? seed = null, string name = null)
+        public KerasSharp.Engine.Topology.Tensor random_uniform(int[] shape, double minval = 0.0, double maxval = 1.0, DataType? dtype = null, int? seed = null, string name = null)
         {
             if (dtype == null)
                 dtype = floatx();
@@ -820,109 +826,115 @@ namespace KerasSharp.Backends
 
             using (name_scope("random_uniform", name))
             {
-                var _shape = tf.Const(shape.Select(x => (long)x).ToArray());
-                TFOutput u = tf.RandomUniform(_shape, dtype: _dtype, seed: seed, operName: "uniform");
-
-                return Out(tf.Add(tf.Mul(u, _constant(maxval - minval, dtype: _dtype)),
-                                            _constant(minval, dtype: _dtype)), name: "scaled");
+                var _shape = Tensorflow.tf.constant(shape.Select(x => (long)x).ToArray());
+                // TODO: TensorFlow.NET - minval, maxval support...
+                //return Out(gen_random_ops.random_uniform(_shape, _dtype, seed, name: "uniform"));
+                return Out(gen_math_ops.add(
+                    gen_math_ops.mul(
+                        gen_random_ops.random_uniform(_shape, _dtype, seed, name: "uniform"),
+                        Tensorflow.tf.constant(maxval - minval, dtype: _dtype)
+                    ),
+                    Tensorflow.tf.constant(minval, dtype: _dtype),
+                    name: "scaled"
+                ));
             }
         }
 
-        public Tensor relu(Tensor x)
+        public KerasSharp.Engine.Topology.Tensor relu(KerasSharp.Engine.Topology.Tensor x)
         {
             return Out(tf.Relu(In(x)));
         }
 
-        public Tensor sigmoid(Tensor x)
+        public KerasSharp.Engine.Topology.Tensor sigmoid(KerasSharp.Engine.Topology.Tensor x)
         {
             // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L2817
             return Out(tf.Sigmoid(In(x)));
         }
 
-        public Tensor softmax(Tensor x)
+        public KerasSharp.Engine.Topology.Tensor softmax(KerasSharp.Engine.Topology.Tensor x)
         {
             return Out(tf.Softmax(In(x).output));
         }
 
-        public Tensor softplus(Tensor x)
+        public KerasSharp.Engine.Topology.Tensor softplus(KerasSharp.Engine.Topology.Tensor x)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor softsign(Tensor x)
+        public KerasSharp.Engine.Topology.Tensor softsign(KerasSharp.Engine.Topology.Tensor x)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor sqrt(Tensor x)
+        public KerasSharp.Engine.Topology.Tensor sqrt(KerasSharp.Engine.Topology.Tensor x)
         {
             return Out(tf.Sqrt(In(x)));
         }
 
-        public Tensor pow(Tensor x, Tensor p, string name = null)
+        public KerasSharp.Engine.Topology.Tensor pow(KerasSharp.Engine.Topology.Tensor x, KerasSharp.Engine.Topology.Tensor p, string name = null)
         {
-            return Out(tf.Pow(In(x), In(p), operName: name));
+            return Out(gen_math_ops.pow(In(x).tensor, In(p).tensor, name: name));
         }
 
-        public Tensor square(Tensor w)
+        public KerasSharp.Engine.Topology.Tensor square(KerasSharp.Engine.Topology.Tensor w)
         {
             return Out(tf.Square(In(w)));
         }
 
-        public Tensor sum(Tensor x, int[] axis, bool keepdims = false, string name = null)
+        public KerasSharp.Engine.Topology.Tensor sum(KerasSharp.Engine.Topology.Tensor x, int[] axis, bool keepdims = false, string name = null)
         {
-            return Out(tf.ReduceSum(In(x), tf.Const(axis), keepdims, name));
+            return Out(math_ops.reduce_sum(In(x).tensor, Tensorflow.tf.constant(axis)));
         }
 
-        public Tensor sum(Tensor x, int axis, bool keepdims = false, string name = null)
+        public KerasSharp.Engine.Topology.Tensor sum(KerasSharp.Engine.Topology.Tensor x, int axis, bool keepdims = false, string name = null)
         {
-            return Out(tf.ReduceSum(In(x), tf.Const(axis), keepdims, name));
+            return Out(math_ops.reduce_sum(In(x).tensor, Tensorflow.tf.constant(axis)));
         }
 
-        public Tensor sum(List<Tensor> x, int[] axis = null, bool keepdims = false, string name = null)
-        {
-            throw new NotImplementedException();
-        }
-
-        public object sum(Tensor tensor)
+        public KerasSharp.Engine.Topology.Tensor sum(List<KerasSharp.Engine.Topology.Tensor> x, int[] axis = null, bool keepdims = false, string name = null)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor sum(double v, Tensor tensor)
+        public object sum(KerasSharp.Engine.Topology.Tensor tensor)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor tanh(Tensor x)
+        public KerasSharp.Engine.Topology.Tensor sum(double v, KerasSharp.Engine.Topology.Tensor tensor)
+        {
+            throw new NotImplementedException();
+        }
+
+        public KerasSharp.Engine.Topology.Tensor tanh(KerasSharp.Engine.Topology.Tensor x)
         {
             return Out(tf.Tanh(In(x)));
         }
 
-        public Tensor truncated_normal(int[] shape, double v, double stddev, DataType? dtype, int? seed)
+        public KerasSharp.Engine.Topology.Tensor truncated_normal(int[] shape, double v, double stddev, DataType? dtype, int? seed)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor truncated_normal(int?[] shape, double v, double stddev, DataType? dtype, int? seed)
+        public KerasSharp.Engine.Topology.Tensor truncated_normal(int?[] shape, double v, double stddev, DataType? dtype, int? seed)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor update(Tensor x, Tensor new_x, string name = null)
+        public KerasSharp.Engine.Topology.Tensor update(KerasSharp.Engine.Topology.Tensor x, KerasSharp.Engine.Topology.Tensor new_x, string name = null)
         {
             TensorFlowTensor _x = In(x);
             return Out(tf.Assign(_x.output, In(new_x), operName: name));
         }
 
-        public Tensor update_add<T>(Tensor x, T increment, string name = null)
+        public KerasSharp.Engine.Topology.Tensor update_add<T>(KerasSharp.Engine.Topology.Tensor x, T increment, string name = null)
             where T : struct
         {
             TensorFlowTensor _x = In(x);
             return Out(tf.AssignAdd(_x, _constant(increment), operName: name));
         }
 
-        public Tensor print_tensor(Tensor x, string message)
+        public KerasSharp.Engine.Topology.Tensor print_tensor(KerasSharp.Engine.Topology.Tensor x, string message)
         {
             // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L2204
             TensorFlowTensor _x = In(x);
@@ -937,7 +949,7 @@ namespace KerasSharp.Backends
         /// <param name="dtype">Tensor type.</param>
         /// <param name="name">Optional name string for the tensor.</param>
         /// 
-        public Tensor variable<T>(T value, DataType? dtype = null, string name = null)
+        public KerasSharp.Engine.Topology.Tensor variable<T>(T value, DataType? dtype = null, string name = null)
             where T : struct
         {
             if (dtype == null)
@@ -967,7 +979,7 @@ namespace KerasSharp.Backends
         /// <param name="dtype">Tensor type.</param>
         /// <param name="name">Optional name string for the tensor.</param>
         /// 
-        public Tensor variable(Array array, DataType? dtype = null, string name = null)
+        public KerasSharp.Engine.Topology.Tensor variable(Array array, DataType? dtype = null, string name = null)
         {
             if (dtype == null)
                 dtype = floatx();
@@ -996,7 +1008,7 @@ namespace KerasSharp.Backends
         /// <param name="dtype">Tensor type.</param>
         /// <param name="name">Optional name string for the tensor.</param>
         /// 
-        public Tensor variable(Tensor tensor, DataType? dtype = null, string name = null)
+        public KerasSharp.Engine.Topology.Tensor variable(KerasSharp.Engine.Topology.Tensor tensor, DataType? dtype = null, string name = null)
         {
             if (dtype == null)
                 dtype = floatx();
@@ -1013,11 +1025,11 @@ namespace KerasSharp.Backends
 
             string varName = t.output.Operation.Name;
 
-            TFOutput init;
+            TF_Output init;
             if (_tensor.tensor == null)
                 init = _tensor.output;
             else
-                init = tf.Cast(tf.Const(_tensor.tensor), _dtype, operName: $"{varName}/init");
+                init = Tensorflow.tf.cast(Tensorflow.tf.constant(_tensor.tensor), _dtype, name: $"{varName}/init")._as_tf_output();
 
             init = tf.Print(init, new[] { init }, $"initializing {varName}");
             tf.AddInitVariable(tf.Assign(t.output, init, operName: $"{varName}/assign").Operation);
@@ -1026,31 +1038,35 @@ namespace KerasSharp.Backends
             return t;
         }
 
-        public Tensor transpose(Tensor tensor)
+        public KerasSharp.Engine.Topology.Tensor transpose(KerasSharp.Engine.Topology.Tensor tensor)
         {
             return Out(tf.Transpose(In(tensor).output));
         }
 
-        public Tensor transpose(Tensor tensor, int[] perm)
+        public KerasSharp.Engine.Topology.Tensor transpose(KerasSharp.Engine.Topology.Tensor tensor, int[] perm)
         {
             return Out(tf.Transpose(In(tensor).output, _constant(perm)));
         }
 
 
-        public object eval(Tensor tensor)
+        public object eval(KerasSharp.Engine.Topology.Tensor tensor)
         {
             var _tensor = In(tensor);
             return eval(_tensor.output);
         }
 
-        public object eval(TFOutput output)
+        public object eval(TF_Output output)
         {
             try
             {
                 // Initialize variables if necessary
-                TFOperation[] ops = tf.GetGlobalVariablesInitializer();
-                if (ops.Length > 0)
-                    _SESSION.Run(new TFOutput[] { }, new TFTensor[] { }, new TFOutput[] { }, ops);
+                //TFOperation[] ops = tf.GetGlobalVariablesInitializer();
+                //if (ops.Length > 0)
+                //    _SESSION.Run(new TF_Output[] { }, new Tensorflow.Tensor[] { }, new TF_Output[] { }, ops);
+                
+                var init = Tensorflow.tf.global_variables_initializer();
+                if (init.NumOutputs > 0)
+                    _SESSION.run(init);
             }
             catch
             {
@@ -1058,7 +1074,7 @@ namespace KerasSharp.Backends
             }
 
             // Evaluate tensor
-            TFTensor[] result = _SESSION.Run(new TFOutput[] { }, new TFTensor[] { }, new[] { output });
+            Tensorflow.Tensor[] result = _SESSION.Run(new TF_Output[] { }, new Tensorflow.Tensor[] { }, new[] { output });
 
             if (result.Length == 1)
                 return result[0].GetValue();
@@ -1068,12 +1084,12 @@ namespace KerasSharp.Backends
 
 
 
-        public Tensor conv1d(Tensor inputs, Tensor kernel, int strides, PaddingType padding, DataFormatType? data_format = null, int dilation_rate = 1, string name = null)
+        public KerasSharp.Engine.Topology.Tensor conv1d(KerasSharp.Engine.Topology.Tensor inputs, KerasSharp.Engine.Topology.Tensor kernel, int strides, PaddingType padding, DataFormatType? data_format = null, int dilation_rate = 1, string name = null)
         {
             throw new NotImplementedException();
         }
 
-        public Tensor conv2d(Tensor inputs, Tensor kernel, int[] strides, PaddingType padding, DataFormatType? data_format = null, int[] dilation_rate = null, string name = null)
+        public KerasSharp.Engine.Topology.Tensor conv2d(KerasSharp.Engine.Topology.Tensor inputs, KerasSharp.Engine.Topology.Tensor kernel, int[] strides, PaddingType padding, DataFormatType? data_format = null, int[] dilation_rate = null, string name = null)
         {
             // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L3102
             if (data_format == null)
@@ -1085,8 +1101,8 @@ namespace KerasSharp.Backends
             if (!dilation_rate.IsEqual(new[] { 1, 1 }))
                 throw new NotImplementedException();
 
-            TFOutput x = In(inputs).output;
-            TFOutput _kernel = In(kernel).output;
+            TF_Output x = In(inputs).output;
+            TF_Output _kernel = In(kernel).output;
 
             // With 4d inputs, tf.nn.convolution only supports
             // data_format NHWC, so we transpose the inputs
@@ -1106,13 +1122,13 @@ namespace KerasSharp.Backends
         /// <summary>
         ///   Transpose and cast the output from conv2d if needed.
         /// </summary>
-        private TFOutput _postprocess_conv2d_output(TFOutput x, DataFormatType data_format)
+        private TF_Output _postprocess_conv2d_output(TF_Output x, DataFormatType data_format)
         {
             if (data_format == DataFormatType.ChannelsFirst)
                 x = tf.Transpose(x, _constant(new[] { 0, 3, 1, 2 }));
 
-            if (floatx() == DataType.Double)
-                x = tf.Cast(x, TFDataType.Double);
+            if (floatx() == DataType.DtDouble)
+                x = Tensorflow.tf.cast(x, TF_DataType.TF_DOUBLE);
             return x;
         }
 
@@ -1136,10 +1152,10 @@ namespace KerasSharp.Backends
         /// <summary>
         ///   Transpose and cast the input before the conv2d.
         /// </summary>
-        private TFOutput _preprocess_conv2d_input(TFOutput x, DataFormatType data_format)
+        private TF_Output _preprocess_conv2d_input(TF_Output x, DataFormatType data_format)
         {
-            if (x.OutputType == TFDataType.Double)
-                x = tf.Cast(x, TFDataType.Float);
+            if (x.OutputType == TF_DataType.TF_DOUBLE)
+                x = Tensorflow.tf.cast(x, TF_DataType.TF_FLOAT);
 
             if (data_format == DataFormatType.ChannelsFirst)
             {
@@ -1153,7 +1169,7 @@ namespace KerasSharp.Backends
             return x;
         }
 
-        public Tensor conv3d(Tensor inputs, Tensor kernel, int[] strides, PaddingType padding, DataFormatType? data_format = null, int[] dilation_rate = null, string name = null)
+        public KerasSharp.Engine.Topology.Tensor conv3d(KerasSharp.Engine.Topology.Tensor inputs, KerasSharp.Engine.Topology.Tensor kernel, int[] strides, PaddingType padding, DataFormatType? data_format = null, int[] dilation_rate = null, string name = null)
         {
             throw new NotImplementedException();
         }
@@ -1167,7 +1183,7 @@ namespace KerasSharp.Backends
         /// <param name="dtype">Data type of returned Keras variable.</param>
         /// <param name="name">String, name of returned Keras variable.</param>
         /// <returns>A variable(including Keras metadata), filled with <c>0.0</c>.</returns>
-        public Tensor zeros(int?[] shape, DataType? dtype = null, string name = null)
+        public KerasSharp.Engine.Topology.Tensor zeros(int?[] shape, DataType? dtype = null, string name = null)
         {
             return zeros(shape.Select(i => i.Value).ToArray(), dtype, name);
         }
@@ -1179,7 +1195,7 @@ namespace KerasSharp.Backends
         /// <param name="dtype">Data type of returned Keras variable.</param>
         /// <param name="name">String, name of returned Keras variable.</param>
         /// <returns>A variable(including Keras metadata), filled with <c>0.0</c>.</returns>
-        public Tensor zeros(int[] shape, DataType? dtype = null, string name = null)
+        public KerasSharp.Engine.Topology.Tensor zeros(int[] shape, DataType? dtype = null, string name = null)
         {
             if (dtype == null)
                 dtype = floatx();
@@ -1189,7 +1205,7 @@ namespace KerasSharp.Backends
             // tf_dtype = _convert_string_dtype(dtype)
 
             // However, we might have to perform other conversions of our own:
-            Type type = TFTensor.TypeFromTensorType(In(dtype.Value));
+            Type type = Tensorflow.Tensor.TypeFromTensorType(In(dtype.Value));
             Array zeros = Array.CreateInstance(type, shape);
 
             return this.variable(array: zeros, name: name);
@@ -1204,7 +1220,7 @@ namespace KerasSharp.Backends
         /// 
         /// <returns>A bool tensor.</returns>
         /// 
-        public Tensor equal(Tensor x, Tensor y)
+        public KerasSharp.Engine.Topology.Tensor equal(KerasSharp.Engine.Topology.Tensor x, KerasSharp.Engine.Topology.Tensor y)
         {
             return Out(tf.Equal(In(x), In(y)));
         }
@@ -1218,21 +1234,21 @@ namespace KerasSharp.Backends
         /// 
         /// <returns>A tensor.</returns>
         /// 
-        public Tensor argmax(Tensor x, int axis = -1)
+        public KerasSharp.Engine.Topology.Tensor argmax(KerasSharp.Engine.Topology.Tensor x, int axis = -1)
         {
             // https://github.com/fchollet/keras/blob/f65a56fb65062c8d14d215c9f4b1015b97cc5bf3/keras/backend/tensorflow_backend.py#L1332
             //axis = _normalize_axis(axis, ndim(x));
-            return Out(tf.ArgMax(In(x), tf.Const(axis)));
+            return Out(tf.ArgMax(In(x), Tensorflow.tf.constant(axis)));
         }
 
-        public Tensor round(Tensor x)
+        public KerasSharp.Engine.Topology.Tensor round(KerasSharp.Engine.Topology.Tensor x)
         {
             return Out(tf.Round(In(x)));
         }
 
         public DataType floatx()
         {
-            return DataType.Float;
+            return DataType.DtFloat;
         }
 
 
@@ -1263,7 +1279,7 @@ namespace KerasSharp.Backends
             return new TFShape(shape.Select(x => (long)x).ToArray());
         }
 
-        public Tensor Out(TFOutput output, string name = null)
+        public KerasSharp.Engine.Topology.Tensor Out(TF_Output output, string name = null)
         {
             if (name != null)
                 output = tf.Identity(output, operName: name);
@@ -1274,41 +1290,41 @@ namespace KerasSharp.Backends
             };
         }
 
-        public Tensor Out(TFTensor output)
+        public KerasSharp.Engine.Topology.Tensor Out(Tensorflow.Tensor output)
         {
-            return Out(tf.Const(output));
+            return Out(Tensorflow.tf.constant(output));
         }
 
-        public TensorFlowTensor In(Tensor output)
+        public TensorFlowTensor In(KerasSharp.Engine.Topology.Tensor output)
         {
             return (TensorFlowTensor)output;
         }
 
-        public TensorFlowTensor In(TFOutput output)
+        public TensorFlowTensor In(TF_Output output)
         {
             return new TensorFlowTensor(this) { output = output };
         }
 
-        public static TFDataType In(DataType dataType)
+        public static TF_DataType In(DataType dataType)
         {
-            return (TFDataType)dataType;
+            return (TF_DataType)dataType;
         }
 
-        public static TFDataType? In(DataType? dataType)
+        public static TF_DataType? In(DataType? dataType)
         {
             if (dataType == null)
                 return null;
-            return (TFDataType)dataType.Value;
+            return (TF_DataType)dataType.Value;
         }
 
-        public static DataType? Out(TFDataType? dataType)
+        public static DataType? Out(TF_DataType? dataType)
         {
             if (dataType == null)
                 return null;
             return Out(dataType.Value);
         }
 
-        public static DataType Out(TFDataType dataType)
+        public static DataType Out(TF_DataType dataType)
         {
             if ((int)dataType > 100)
                 return (DataType)((dataType - 100));

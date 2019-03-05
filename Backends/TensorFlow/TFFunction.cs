@@ -28,7 +28,7 @@ using System;
 using System.Collections.Generic;
 using KerasSharp.Engine.Topology;
 using KerasSharp.Models;
-using TensorFlow;
+using Tensorflow;
 using System.Linq;
 using Accord.Math;
 using Accord;
@@ -43,27 +43,27 @@ namespace KerasSharp.Backends
     /// 
     /// <seealso cref="KerasSharp.Models.Function" />
     /// 
-    public class TFFunction : Function
+    public class TFFunction : KerasSharp.Models.Function
     {
         private TensorFlowBackend K;
-        private TFGraph tf;
-        private List<Tensor> inputs;
-        private List<Tensor> outputs;
+        private Graph tf;
+        private List<KerasSharp.Engine.Topology.Tensor> inputs;
+        private List<KerasSharp.Engine.Topology.Tensor> outputs;
         private string name;
-        private List<TFOperation> updates_op;
+        private List<TF_Operation> updates_op;
 
-        public TFFunction(TensorFlowBackend k, List<Tensor> inputs, List<Tensor> outputs, List<List<Tensor>> updates, string name)
+        public TFFunction(TensorFlowBackend k, List<KerasSharp.Engine.Topology.Tensor> inputs, List<KerasSharp.Engine.Topology.Tensor> outputs, List<List<KerasSharp.Engine.Topology.Tensor>> updates, string name)
         {
             this.K = k;
             this.tf = k.tf;
 
             if (updates == null)
-                updates = new List<List<Tensor>>();
+                updates = new List<List<KerasSharp.Engine.Topology.Tensor>>();
             this.inputs = inputs;
             this.outputs = outputs;
             {
-                var updates_ops = new List<TFOperation>();
-                foreach (List<Tensor> update in updates)
+                var updates_ops = new List<TF_Operation>();
+                foreach (List<KerasSharp.Engine.Topology.Tensor> update in updates)
                 {
                     if (update.Count == 2)
                     {
@@ -90,9 +90,9 @@ namespace KerasSharp.Backends
             //this.session_kwargs = session_kwargs;
         }
 
-        public override List<Tensor> Call(List<Array> inputs)
+        public override List<KerasSharp.Engine.Topology.Tensor> Call(List<Array> inputs)
         {
-            var feed_dict = new Dictionary<Tensor, Array>();
+            var feed_dict = new Dictionary<KerasSharp.Engine.Topology.Tensor, Array>();
             foreach (var (tensor, value) in Enumerable.Zip(this.inputs, inputs, (a, b) => (a, b)))
             {
                 // if (is_sparse(tensor))
@@ -106,19 +106,21 @@ namespace KerasSharp.Backends
             }
 
             var session = K._SESSION;
+            
+            var init = Tensorflow.tf.global_variables_initializer();
 
-            var init = tf.GetGlobalVariablesInitializer();
-            if (init.Length > 0)
+            if (init.NumInputs > 0)
             {
                 Console.WriteLine("Initializing variables:");
-                foreach (var op in init)
-                {
-                    Console.WriteLine(" - " + op.Name);
-                    session.Run(new TFOutput[0], new TFTensor[0], new TFOutput[0], new[] { op });
-                }
+                //foreach (var op in init)
+                //{
+                //    Console.WriteLine(" - " + op.Name);
+                //    session.Run(new TF_Output[0], new Tensorflow.Tensor[0], new TF_Output[0], new[] { op });
+                //}
+                session.run(init);
 
                 Console.WriteLine("Operations:");
-                foreach (var op in tf.GetEnumerator())
+                foreach (var op in init.inputs)
                     Console.WriteLine(" - " + op.Name);
                 Console.WriteLine();
             }
@@ -135,7 +137,7 @@ namespace KerasSharp.Backends
             foreach (var op in this.updates_op)
                 runner.AddTarget(op);
 
-            foreach (KeyValuePair<Tensor, Array> pair in feed_dict)
+            foreach (KeyValuePair<KerasSharp.Engine.Topology.Tensor, Array> pair in feed_dict)
             {
                 TensorFlowTensor t = K.In(pair.Key);
                 runner.AddInput(t.output, pair.Value);
@@ -169,7 +171,7 @@ namespace KerasSharp.Backends
             // Console.ReadKey();
         }
 
-        private void PrintVariables(Dictionary<Tensor, Array> feed_dict, TFSession session)
+        private void PrintVariables(Dictionary<KerasSharp.Engine.Topology.Tensor, Array> feed_dict, Session session)
         {
             string[] ops =
             {
@@ -204,7 +206,7 @@ namespace KerasSharp.Backends
                 try
                 {
                     var debugRunner = session.GetRunner();
-                    foreach (KeyValuePair<Tensor, Array> pair in feed_dict)
+                    foreach (KeyValuePair<KerasSharp.Engine.Topology.Tensor, Array> pair in feed_dict)
                     {
                         TensorFlowTensor t = K.In(pair.Key);
                         debugRunner.AddInput(t.output, pair.Value);

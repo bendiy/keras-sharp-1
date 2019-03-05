@@ -28,7 +28,7 @@ namespace KerasSharp.Backends
 {
     using KerasSharp.Engine.Topology;
     using System;
-    using TensorFlow;
+    using Tensorflow;
     
     public class TensorFlowNameScope : NameScope, IDisposable
     {
